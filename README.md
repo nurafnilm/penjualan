@@ -1,7 +1,7 @@
 # Penjualan
 
 ## Deskripsi
-Backend sederhana untuk transaksi penjualan produk. Full CRUD dengan Gin, GORM (Postgres), dan Swagger docs. Endpoint: /api/v1/transactions.
+Backend sederhana untuk transaksi penjualan produk. Full CRUD dengan Gin, GORM (Postgres), dan Swagger docs.
 
 ## Installation
 1. Clone
@@ -46,12 +46,6 @@ Post data penjualan (nama, total, harga):
 Hasilnya di pgAdmin:
 <img width="1920" height="1080" alt="Screenshot 2025-12-19 133014" src="https://github.com/user-attachments/assets/7ab2da93-0fe6-438e-b18d-fd5aed88b4de" />
 
-### PATCH
-Mencoba mengubah data:
-<img width="1920" height="1080" alt="Screenshot 2025-12-19 133113" src="https://github.com/user-attachments/assets/a0a75dc5-c92a-4bdb-a4ad-df90314232bb" />
-Hasilnya (produk id yang kedua berubah, bisa dibandingkan dengan screenshoot pgAdmin pada post:
-<img width="1920" height="1080" alt="Screenshot 2025-12-19 133025" src="https://github.com/user-attachments/assets/6b85d55e-b089-4197-a64a-4ff992832d36" />
-
 ### DELETE
 Delete berdasarkan ID:
 <img width="1920" height="1080" alt="Screenshot 2025-12-19 133147" src="https://github.com/user-attachments/assets/b339bb0e-f3b1-4c84-8d18-c73cb40153d2" />
@@ -59,5 +53,11 @@ Hasil di PGAdmin:
 <img width="1920" height="1080" alt="Screenshot 2025-12-19 133202" src="https://github.com/user-attachments/assets/368a9424-ce6e-4fa4-bcaa-350801d2a3bd" />
 Ketika disearch tidak muncul:
 <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/29386f05-1779-452b-8936-27c2e56a2319" />
+
+### PATCH
+Mencoba mengubah data:
+<img width="1920" height="1080" alt="Screenshot 2025-12-19 133113" src="https://github.com/user-attachments/assets/a0a75dc5-c92a-4bdb-a4ad-df90314232bb" />
+Hasilnya (produk id yang kedua berubah, bisa dibandingkan dengan screenshoot pgAdmin pada post:
+<img width="1920" height="1080" alt="Screenshot 2025-12-19 133025" src="https://github.com/user-attachments/assets/6b85d55e-b089-4197-a64a-4ff992832d36" />
 
 
