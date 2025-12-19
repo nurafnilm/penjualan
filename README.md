@@ -26,8 +26,8 @@ DB_PORT=5432 (default, sesuaikan)
 ## Endpoints
 - GET /api/v1/transactions: List (filter berdasarkan product_id=xxx atau start_date=YYYY-MM-DD)
 - POST /api/v1/transactions: Buat baru (body: {"product_id": "xxx", "quantity": 2, "price": 15000000})
-- PATCH /api/v1/transactions/{id}: Update partial (body: {"quantity": 3})
 - DELETE /api/v1/transactions/{id}: Hapus (berdasarkan id)
+- PATCH /api/v1/transactions/{id}: Update partial (body: {"quantity": 3})
 
 ## Screenshoot Percobaan
 
