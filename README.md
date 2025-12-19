@@ -15,7 +15,7 @@ __.env Example__
 DB_USER=postgres
 DB_PASSWORD=your_pass
 DB_NAME=salesdb
-DB_PORT=5432 (default, sesuaikan)
+DB_PORT=5432 (default, sesuaikan)```
 
 ## Run
 - go run main.go
