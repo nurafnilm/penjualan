@@ -1,0 +1,162 @@
+definitions:
+  gorm.DeletedAt:
+    properties:
+      time:
+        type: string
+      valid:
+        description: Valid is true if Time is not NULL
+        type: boolean
+    type: object
+  models.Transaction:
+    properties:
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      id:
+        type: integer
+      price:
+        description: Decimal buat uang, lebih akurat
+        type: number
+      product_id:
+        description: Tambah type varchar(50) buat limit
+        type: string
+      quantity:
+        description: Tambah check constraint
+        type: integer
+      total:
+        description: Computed
+        type: number
+      updatedAt:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /api/v1/transactions:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve list of all sales transactions, optional filter by product_id
+        or start_date
+      parameters:
+      - description: Filter by product ID (e.g., IPHONE15-001)
+        in: query
+        name: product_id
+        type: string
+      - description: Filter by start date (YYYY-MM-DD, e.g., 2025-12-01)
+        in: query
+        name: start_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Transaction'
+            type: array
+      summary: Get all sales transactions
+      tags:
+      - transactions
+    post:
+      consumes:
+      - application/json
+      description: Create a new transaction for electronic product sale
+      parameters:
+      - description: Transaction data
+        in: body
+        name: transaction
+        required: true
+        schema:
+          $ref: '#/definitions/models.Transaction'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Transaction'
+        "400":
+          description: Validation error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new sales transaction
+      tags:
+      - transactions
+  /api/v1/transactions/{id}:
+    delete:
+      description: Soft delete a transaction by ID
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid input
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a sales transaction
+      tags:
+      - transactions
+    patch:
+      consumes:
+      - application/json
+      description: Update specific fields of a transaction (e.g., quantity or price)
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Fields to update (e.g., quantity, price)
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Transaction'
+        "400":
+          description: Invalid input
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a sales transaction partially
+      tags:
+      - transactions
+swagger: "2.0"
