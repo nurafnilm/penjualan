@@ -4,28 +4,28 @@
 Backend sederhana untuk transaksi penjualan produk. Full CRUD dengan Gin, GORM (Postgres), dan Swagger docs. Endpoint: /api/v1/transactions.
 
 ## Installation
-Clone: git clone (https://github.com/nurafnilm/penjualan)
-cd backend-penjualan
-go mod tidy
-Setup Postgres: Buat DB salesdb
-Update .env di folder backend-penjualan dengan creds DB.
+1. Clone
+2. `cd backend-penjualan`
+3. `go mod tidy`
+4. Setup Postgres: Buat DB salesdb
+5. Update `.env` di folder backend-penjualan.
 
 __.env Example__
-DB_HOST=localhost
+```DB_HOST=localhost
 DB_USER=postgres
 DB_PASSWORD=your_pass
 DB_NAME=salesdb
 DB_PORT=5432 (default, sesuaikan)
 
 ## Run
-go run main.go
-Swagger: http://localhost:8080/swagger/index.html
+- go run main.go
+- Swagger: http://localhost:8080/swagger/index.html
 
 ## Endpoints
-GET /api/v1/transactions: List (filter berdasarkan product_id=xxx atau start_date=YYYY-MM-DD)
-POST /api/v1/transactions: Buat baru (body: {"product_id": "xxx", "quantity": 2, "price": 15000000})
-PATCH /api/v1/transactions/{id}: Update partial (body: {"quantity": 3})
-DELETE /api/v1/transactions/{id}: Hapus (berdasarkan id)
+- GET /api/v1/transactions: List (filter berdasarkan product_id=xxx atau start_date=YYYY-MM-DD)
+- POST /api/v1/transactions: Buat baru (body: {"product_id": "xxx", "quantity": 2, "price": 15000000})
+- PATCH /api/v1/transactions/{id}: Update partial (body: {"quantity": 3})
+- DELETE /api/v1/transactions/{id}: Hapus (berdasarkan id)
 
 ## Screenshoot Percobaan
 
