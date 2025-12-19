@@ -11,11 +11,13 @@ Backend sederhana untuk transaksi penjualan produk. Full CRUD dengan Gin, GORM (
 5. Update `.env` di folder backend-penjualan.
 
 __.env Example__
-```DB_HOST=localhost
+```
+DB_HOST=localhost
 DB_USER=postgres
 DB_PASSWORD=your_pass
 DB_NAME=salesdb
-DB_PORT=5432 (default, sesuaikan)```
+DB_PORT=5432 (default, sesuaikan)
+```
 
 ## Run
 - go run main.go
