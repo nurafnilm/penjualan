@@ -24,12 +24,33 @@ DB_PORT=5432 (default, sesuaikan)
 - Swagger: http://localhost:8080/swagger/index.html
 
 ## Endpoints
-- GET /api/v1/transactions: List (filter berdasarkan product_id=xxx atau start_date=YYYY-MM-DD)
-- POST /api/v1/transactions: Buat baru (body: {"product_id": "xxx", "quantity": 2, "price": 15000000})
-- DELETE /api/v1/transactions/{id}: Hapus (berdasarkan id)
-- PATCH /api/v1/transactions/{id}: Update partial (body: {"quantity": 3})
+(update)
+- produk
+```
+GET /api/v1/products: List semua products
+POST /api/v1/products: Buat product baru (body: {"name": "Product A", "price": 1000000})
+GET /api/v1/products/{id}: Ambil detail product berdasarkan id
+PUT /api/v1/products/{id}: Update product (body: {"name": "Product Updated", "price": 2000000})
+DELETE /api/v1/products/{id}: Hapus product berdasarkan id
+```
+- transaksi
+```
+GET /api/v1/transactions: List semua transactions
+POST /api/v1/transactions: Buat transaction baru (body: {"name": "xxx", "product": 2, "quantity": 2})
+GET /api/v1/transactions/{id}: Ambil detail transaction berdasarkan id
+PATCH /api/v1/transactions/{id}: Update partial transaction (body: {"quantity": 3})
+DELETE /api/v1/transactions/{id}: Hapus transaction berdasarkan id
+```
 
 ## Screenshoot Percobaan
+
+### Table products
+(update)
+<img width="1178" height="330" alt="image" src="https://github.com/user-attachments/assets/67671870-88de-4713-932f-bdf61c406376" />
+
+### Table transactions
+(update)
+<img width="1536" height="277" alt="image" src="https://github.com/user-attachments/assets/3b5fbfbe-93b9-4ca2-ae16-2c02185bfec1" />
 
 ### Tampilan Awal
 <img width="1920" height="1080" alt="Screenshot 2025-12-19 140848" src="https://github.com/user-attachments/assets/7bbdfd14-13c6-401c-859e-a5305ea9672a" />
