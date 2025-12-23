@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"  // NEW: Untuk strings.Contains
+	"strings"
 	"time"
 
 	_ "backend-penjualan/docs" // Untuk Swagger
@@ -18,12 +18,12 @@ import (
 )
 
 func main() {
-	// Load .env (sama)
+	// Load .env
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using system env vars")
 	}
 
-	// DSN (sama)
+	// DSN
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Jakarta",
 		os.Getenv("DB_HOST"), os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"),
 		os.Getenv("DB_NAME"), os.Getenv("DB_PORT"))
@@ -32,7 +32,7 @@ func main() {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
-	// Setup DB connection pool (sama)
+	// Setup DB connection pool
 	sqlDB, err := db.DB()
 	if err != nil {
 		log.Fatal("Failed to get sql.DB:", err)
@@ -56,7 +56,7 @@ func main() {
 	}
 	log.Println("Database migrated successfully (fresh tables created)")
 
-	// Setup router & run server (sama)
+	// Setup router & run server
 	router := routes.SetupRouter(db)
 	port := os.Getenv("PORT")
 	if port == "" {

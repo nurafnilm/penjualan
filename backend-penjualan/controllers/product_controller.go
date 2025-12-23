@@ -11,6 +11,8 @@ import (
 	"gorm.io/gorm"
 )
 
+// ProductController godoc
+// @Description Product controller handles CRUD operations for products
 type ProductController struct {
 	DB *gorm.DB
 }
@@ -19,7 +21,16 @@ func NewProductController(db *gorm.DB) *ProductController {
 	return &ProductController{DB: db}
 }
 
-// GET all products (sama)
+// GetAll godoc
+// @Summary Get all products
+// @Description Retrieve list of all products with optional search by name
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param search query string false "Search by product name (partial match)"
+// @Success 200 {array} models.Product "List of products"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /products [get]
 func (ctrl *ProductController) GetAll(c *gin.Context) {
 	var products []models.Product
 	query := ctrl.DB
@@ -33,7 +44,18 @@ func (ctrl *ProductController) GetAll(c *gin.Context) {
 	c.JSON(http.StatusOK, products)
 }
 
-// GET by ID (sama)
+// GetByID godoc
+// @Summary Get product by ID
+// @Description Retrieve a specific product by ID
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param id path int true "Product ID"
+// @Success 200 {object} models.Product "Product details"
+// @Failure 400 {object} map[string]string "Invalid ID"
+// @Failure 404 {object} map[string]string "Product not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /products/{id} [get]
 func (ctrl *ProductController) GetByID(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -52,7 +74,17 @@ func (ctrl *ProductController) GetByID(c *gin.Context) {
 	c.JSON(http.StatusOK, product)
 }
 
-// POST new product (FIXED: Validasi manual)
+// Create godoc
+// @Summary Create a new product
+// @Description Create a new product with validation
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param product body models.Product true "Product data (nama required, harga positive & max 1T)"
+// @Success 201 {object} models.Product "Created product"
+// @Failure 400 {object} map[string]string "Validation error"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /products [post]
 func (ctrl *ProductController) Create(c *gin.Context) {
 	var input models.Product
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -75,7 +107,19 @@ func (ctrl *ProductController) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, input)
 }
 
-// PUT update product (FIXED: Validasi manual)
+// Update godoc
+// @Summary Update a product
+// @Description Update a product by ID with partial updates and validation
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param id path int true "Product ID"
+// @Param updates body object true "Fields to update (e.g., nama, harga)"
+// @Success 200 {object} models.Product "Updated product"
+// @Failure 400 {object} map[string]string "Invalid ID or validation error"
+// @Failure 404 {object} map[string]string "Product not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /products/{id} [put]
 func (ctrl *ProductController) Update(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -107,7 +151,17 @@ func (ctrl *ProductController) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, product)
 }
 
-// DELETE (sama)
+// Delete godoc
+// @Summary Delete a product
+// @Description Delete a product by ID
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param id path int true "Product ID"
+// @Success 200 {object} map[string]string "Success message"
+// @Failure 400 {object} map[string]string "Invalid ID"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /products/{id} [delete]
 func (ctrl *ProductController) Delete(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {

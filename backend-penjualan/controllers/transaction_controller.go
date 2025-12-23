@@ -13,6 +13,8 @@ import (
 	"gorm.io/gorm"
 )
 
+// TransactionController godoc
+// @Description Transaction controller handles CRUD operations for transactions
 type TransactionController struct {
 	DB *gorm.DB
 }
@@ -21,7 +23,19 @@ func NewTransactionController(db *gorm.DB) *TransactionController {
 	return &TransactionController{DB: db}
 }
 
-// GET: Ambil semua transaksi (dengan optional filter: product_id, start_date, search=nama_pembeli or product.nama)
+// GetAll godoc
+// @Summary Get all transactions
+// @Description Retrieve list of all sales transactions with optional filters (product_id, start_date, search by buyer or product name)
+// @Tags transactions
+// @Accept json
+// @Produce json
+// @Param product_id query int false "Filter by product ID"
+// @Param start_date query string false "Filter by start date (YYYY-MM-DD)"
+// @Param search query string false "Search by buyer name or product name (partial)"
+// @Success 200 {array} models.Transaction "List of transactions (with preloaded Product)"
+// @Failure 400 {object} map[string]string "Invalid filter format"
+// @Failure 500 {object} map[string]string "Query failed"
+// @Router /transactions [get]
 func (ctrl *TransactionController) GetAll(c *gin.Context) {
 	var transactions []models.Transaction
 
@@ -63,7 +77,18 @@ func (ctrl *TransactionController) GetAll(c *gin.Context) {
 	c.JSON(http.StatusOK, transactions)
 }
 
-// GET by ID untuk detail (preload Product)
+// GetByID godoc
+// @Summary Get transaction by ID
+// @Description Retrieve a specific transaction by ID with preloaded Product
+// @Tags transactions
+// @Accept json
+// @Produce json
+// @Param id path int true "Transaction ID"
+// @Success 200 {object} models.Transaction "Transaction details (with Product)"
+// @Failure 400 {object} map[string]string "Invalid ID"
+// @Failure 404 {object} map[string]string "Transaction not found"
+// @Failure 500 {object} map[string]string "Query failed"
+// @Router /transactions/{id} [get]
 func (ctrl *TransactionController) GetByID(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -84,13 +109,26 @@ func (ctrl *TransactionController) GetByID(c *gin.Context) {
 	c.JSON(http.StatusOK, transaction)
 }
 
-// POST: Buat transaksi baru (dengan nama_pembeli, product_id, quantity; fetch harga dari product)
+// Create godoc
+// @Summary Create a new transaction
+// @Description Create a new sales transaction (fetch price from product, compute total)
+// @Tags transactions
+// @Accept json
+// @Produce json
+// @Param input body CreateTransactionInput true "Transaction input (nama_pembeli, product_id, quantity)"
+// @Success 201 {object} models.Transaction "Created transaction (with Product)"
+// @Failure 400 {object} map[string]string "Validation error"
+// @Failure 404 {object} map[string]string "Product not found"
+// @Failure 500 {object} map[string]string "Create failed"
+// @Router /transactions [post]
+type CreateTransactionInput struct {
+	NamaPembeli string `json:"nama_pembeli"`
+	ProductID   int64  `json:"product_id"`
+	Quantity    int64  `json:"quantity"`
+}
+
 func (ctrl *TransactionController) Create(c *gin.Context) {
-	var input struct {
-		NamaPembeli string `json:"nama_pembeli"`
-		ProductID   int64  `json:"product_id"`
-		Quantity    int64  `json:"quantity"`
-	}
+	var input CreateTransactionInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid input: %v", err)})
 		return
@@ -142,7 +180,24 @@ func (ctrl *TransactionController) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, transaction)
 }
 
-// PATCH: Update partial (quantity atau nama_pembeli; recompute total)
+// Update godoc
+// @Summary Update a transaction partially
+// @Description Update partial fields (nama_pembeli or quantity), recompute total from product price
+// @Tags transactions
+// @Accept json
+// @Produce json
+// @Param id path int true "Transaction ID"
+// @Param input body UpdateTransactionInput true "Fields to update (optional)"
+// @Success 200 {object} models.Transaction "Updated transaction (with Product)"
+// @Failure 400 {object} map[string]string "Validation error or no changes"
+// @Failure 404 {object} map[string]string "Transaction not found"
+// @Failure 500 {object} map[string]string "Update failed"
+// @Router /transactions/{id} [patch]
+type UpdateTransactionInput struct {
+	NamaPembeli *string `json:"nama_pembeli"`
+	Quantity    *uint   `json:"quantity"`
+}
+
 func (ctrl *TransactionController) Update(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -161,11 +216,7 @@ func (ctrl *TransactionController) Update(c *gin.Context) {
 	}
 
 	// Struct partial untuk bind: optional fields, type-safe
-	type UpdateInput struct {
-		NamaPembeli *string `json:"nama_pembeli"` // Pointer biar optional
-		Quantity    *uint   `json:"quantity"`     // Pointer & uint biar match model
-	}
-	var input UpdateInput
+	var input UpdateTransactionInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid input: %v", err)})
 		return
@@ -221,7 +272,18 @@ func (ctrl *TransactionController) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, transaction)
 }
 
-// DELETE: Soft delete by ID (asumsi model punya gorm.DeletedAt; kalo hard delete, hapus Unscoped())
+// Delete godoc
+// @Summary Delete a transaction
+// @Description Soft delete a transaction by ID (or hard delete if Unscoped)
+// @Tags transactions
+// @Accept json
+// @Produce json
+// @Param id path int true "Transaction ID"
+// @Success 200 {object} map[string]string "Success message"
+// @Failure 400 {object} map[string]string "Invalid ID"
+// @Failure 404 {object} map[string]string "Transaction not found"
+// @Failure 500 {object} map[string]string "Delete failed"
+// @Router /transactions/{id} [delete]
 func (ctrl *TransactionController) Delete(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {

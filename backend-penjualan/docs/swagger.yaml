@@ -1,95 +1,322 @@
 definitions:
-  gorm.DeletedAt:
+  controllers.ForecastResponse:
+    description: Response for forecast upload (includes historical + predictions)
     properties:
-      time:
+      eda_stats:
+        additionalProperties: true
+        type: object
+      forecast:
+        items:
+          additionalProperties: true
+          type: object
+        type: array
+    type: object
+  models.Product:
+    properties:
+      created_at:
         type: string
-      valid:
-        description: Valid is true if Time is not NULL
-        type: boolean
+      deleted_at:
+        type: string
+      harga:
+        description: 'FIXED: (15,2) biar max triliunan'
+        type: number
+      id:
+        type: integer
+      nama:
+        type: string
+      updated_at:
+        type: string
     type: object
   models.Transaction:
     properties:
-      createdAt:
+      created_at:
         type: string
-      deletedAt:
-        $ref: '#/definitions/gorm.DeletedAt'
+      deleted_at:
+        type: string
+      harga:
+        type: number
       id:
         type: integer
-      price:
-        description: Decimal buat uang, lebih akurat
-        type: number
-      product_id:
-        description: Tambah type varchar(50) buat limit
+      nama_pembeli:
         type: string
+      product:
+        $ref: '#/definitions/models.Product'
+      product_id:
+        type: integer
       quantity:
-        description: Tambah check constraint
         type: integer
       total:
-        description: Computed
         type: number
-      updatedAt:
+      updated_at:
         type: string
     type: object
 info:
   contact: {}
 paths:
-  /api/v1/transactions:
-    get:
+  /api/v1/forecast/upload:
+    post:
       consumes:
-      - application/json
-      description: Retrieve list of all sales transactions, optional filter by product_id
-        or start_date
+      - multipart/form-data
+      description: Upload CSV for sales forecast using Prophet model. CSV must have
+        'date' (YYYY-MM-DD) and 'projected_quantity' (or 'value') columns.
       parameters:
-      - description: Filter by product ID (e.g., IPHONE15-001)
-        in: query
-        name: product_id
-        type: string
-      - description: Filter by start date (YYYY-MM-DD, e.g., 2025-12-01)
-        in: query
-        name: start_date
-        type: string
+      - description: CSV file with historical data
+        in: formData
+        name: csvFile
+        required: true
+        type: file
+      - description: Number of days to forecast (default 30)
+        in: formData
+        name: periods
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/models.Transaction'
-            type: array
-      summary: Get all sales transactions
+            $ref: '#/definitions/controllers.ForecastResponse'
+        "400":
+          description: Invalid CSV or input
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error (e.g., Python exec failed)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Upload CSV and get forecast
       tags:
-      - transactions
+      - forecast
+  /products:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve list of all products with optional search by name
+      parameters:
+      - description: Search by product name (partial match)
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of products
+          schema:
+            items:
+              $ref: '#/definitions/models.Product'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all products
+      tags:
+      - products
     post:
       consumes:
       - application/json
-      description: Create a new transaction for electronic product sale
+      description: Create a new product with validation
       parameters:
-      - description: Transaction data
+      - description: Product data (nama required, harga positive & max 1T)
         in: body
-        name: transaction
+        name: product
         required: true
         schema:
-          $ref: '#/definitions/models.Transaction'
+          $ref: '#/definitions/models.Product'
       produces:
       - application/json
       responses:
         "201":
-          description: Created
+          description: Created product
           schema:
-            $ref: '#/definitions/models.Transaction'
+            $ref: '#/definitions/models.Product'
         "400":
           description: Validation error
           schema:
             additionalProperties:
               type: string
             type: object
-      summary: Create a new sales transaction
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new product
+      tags:
+      - products
+  /products/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a product by ID
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a product
+      tags:
+      - products
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific product by ID
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product details
+          schema:
+            $ref: '#/definitions/models.Product'
+        "400":
+          description: Invalid ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Product not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get product by ID
+      tags:
+      - products
+    put:
+      consumes:
+      - application/json
+      description: Update a product by ID with partial updates and validation
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Fields to update (e.g., nama, harga)
+        in: body
+        name: updates
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated product
+          schema:
+            $ref: '#/definitions/models.Product'
+        "400":
+          description: Invalid ID or validation error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Product not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a product
+      tags:
+      - products
+  /transactions:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve list of all sales transactions with optional filters (product_id,
+        start_date, search by buyer or product name)
+      parameters:
+      - description: Filter by product ID
+        in: query
+        name: product_id
+        type: integer
+      - description: Filter by start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: Search by buyer name or product name (partial)
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of transactions (with preloaded Product)
+          schema:
+            items:
+              $ref: '#/definitions/models.Transaction'
+            type: array
+        "400":
+          description: Invalid filter format
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Query failed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all transactions
       tags:
       - transactions
-  /api/v1/transactions/{id}:
+  /transactions/{id}:
     delete:
-      description: Soft delete a transaction by ID
+      consumes:
+      - application/json
+      description: Soft delete a transaction by ID (or hard delete if Unscoped)
       parameters:
       - description: Transaction ID
         in: path
@@ -106,57 +333,62 @@ paths:
               type: string
             type: object
         "400":
-          description: Invalid input
+          description: Invalid ID
           schema:
             additionalProperties:
               type: string
             type: object
         "404":
-          description: Not found
+          description: Transaction not found
           schema:
             additionalProperties:
               type: string
             type: object
-      summary: Delete a sales transaction
+        "500":
+          description: Delete failed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a transaction
       tags:
       - transactions
-    patch:
+    get:
       consumes:
       - application/json
-      description: Update specific fields of a transaction (e.g., quantity or price)
+      description: Retrieve a specific transaction by ID with preloaded Product
       parameters:
       - description: Transaction ID
         in: path
         name: id
         required: true
         type: integer
-      - description: Fields to update (e.g., quantity, price)
-        in: body
-        name: updates
-        required: true
-        schema:
-          additionalProperties: true
-          type: object
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Transaction details (with Product)
           schema:
             $ref: '#/definitions/models.Transaction'
         "400":
-          description: Invalid input
+          description: Invalid ID
           schema:
             additionalProperties:
               type: string
             type: object
         "404":
-          description: Not found
+          description: Transaction not found
           schema:
             additionalProperties:
               type: string
             type: object
-      summary: Update a sales transaction partially
+        "500":
+          description: Query failed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get transaction by ID
       tags:
       - transactions
 swagger: "2.0"

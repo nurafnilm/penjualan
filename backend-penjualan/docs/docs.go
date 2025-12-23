@@ -15,77 +15,52 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/v1/transactions": {
-            "get": {
-                "description": "Retrieve list of all sales transactions, optional filter by product_id or start_date",
+        "/api/v1/forecast/upload": {
+            "post": {
+                "description": "Upload CSV for sales forecast using Prophet model. CSV must have 'date' (YYYY-MM-DD) and 'projected_quantity' (or 'value') columns.",
                 "consumes": [
-                    "application/json"
+                    "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "transactions"
+                    "forecast"
                 ],
-                "summary": "Get all sales transactions",
+                "summary": "Upload CSV and get forecast",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Filter by product ID (e.g., IPHONE15-001)",
-                        "name": "product_id",
-                        "in": "query"
+                        "type": "file",
+                        "description": "CSV file with historical data",
+                        "name": "csvFile",
+                        "in": "formData",
+                        "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "Filter by start date (YYYY-MM-DD, e.g., 2025-12-01)",
-                        "name": "start_date",
-                        "in": "query"
+                        "type": "integer",
+                        "description": "Number of days to forecast (default 30)",
+                        "name": "periods",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Transaction"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Create a new transaction for electronic product sale",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "transactions"
-                ],
-                "summary": "Create a new sales transaction",
-                "parameters": [
-                    {
-                        "description": "Transaction data",
-                        "name": "transaction",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.Transaction"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/models.Transaction"
+                            "$ref": "#/definitions/controllers.ForecastResponse"
                         }
                     },
                     "400": {
-                        "description": "Validation error",
+                        "description": "Invalid CSV or input",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error (e.g., Python exec failed)",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -96,16 +71,409 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/transactions/{id}": {
+        "/products": {
+            "get": {
+                "description": "Retrieve list of all products with optional search by name",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "products"
+                ],
+                "summary": "Get all products",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search by product name (partial match)",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of products",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Product"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new product with validation",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "products"
+                ],
+                "summary": "Create a new product",
+                "parameters": [
+                    {
+                        "description": "Product data (nama required, harga positive \u0026 max 1T)",
+                        "name": "product",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Product"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created product",
+                        "schema": {
+                            "$ref": "#/definitions/models.Product"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/products/{id}": {
+            "get": {
+                "description": "Retrieve a specific product by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "products"
+                ],
+                "summary": "Get product by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Product ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Product details",
+                        "schema": {
+                            "$ref": "#/definitions/models.Product"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Product not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update a product by ID with partial updates and validation",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "products"
+                ],
+                "summary": "Update a product",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Product ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update (e.g., nama, harga)",
+                        "name": "updates",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated product",
+                        "schema": {
+                            "$ref": "#/definitions/models.Product"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID or validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Product not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
             "delete": {
-                "description": "Soft delete a transaction by ID",
+                "description": "Delete a product by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "products"
+                ],
+                "summary": "Delete a product",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Product ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/transactions": {
+            "get": {
+                "description": "Retrieve list of all sales transactions with optional filters (product_id, start_date, search by buyer or product name)",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "transactions"
                 ],
-                "summary": "Delete a sales transaction",
+                "summary": "Get all transactions",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Filter by product ID",
+                        "name": "product_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by start date (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by buyer name or product name (partial)",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of transactions (with preloaded Product)",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Transaction"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid filter format",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Query failed",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/transactions/{id}": {
+            "get": {
+                "description": "Retrieve a specific transaction by ID with preloaded Product",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Get transaction by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Transaction ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Transaction details (with Product)",
+                        "schema": {
+                            "$ref": "#/definitions/models.Transaction"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Transaction not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Query failed",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Soft delete a transaction by ID (or hard delete if Unscoped)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Delete a transaction",
                 "parameters": [
                     {
                         "type": "integer",
@@ -126,7 +494,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Invalid input",
+                        "description": "Invalid ID",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -135,56 +503,7 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "Not found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "description": "Update specific fields of a transaction (e.g., quantity or price)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "transactions"
-                ],
-                "summary": "Update a sales transaction partially",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Transaction ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Fields to update (e.g., quantity, price)",
-                        "name": "updates",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.Transaction"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid input",
+                        "description": "Transaction not found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -192,8 +511,8 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "404": {
-                        "description": "Not found",
+                    "500": {
+                        "description": "Delete failed",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -206,47 +525,78 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "gorm.DeletedAt": {
+        "controllers.ForecastResponse": {
+            "description": "Response for forecast upload (includes historical + predictions)",
             "type": "object",
             "properties": {
-                "time": {
+                "eda_stats": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "forecast": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                    }
+                }
+            }
+        },
+        "models.Product": {
+            "type": "object",
+            "properties": {
+                "created_at": {
                     "type": "string"
                 },
-                "valid": {
-                    "description": "Valid is true if Time is not NULL",
-                    "type": "boolean"
+                "deleted_at": {
+                    "type": "string"
+                },
+                "harga": {
+                    "description": "FIXED: (15,2) biar max triliunan",
+                    "type": "number"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "nama": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
         "models.Transaction": {
             "type": "object",
             "properties": {
-                "createdAt": {
+                "created_at": {
                     "type": "string"
                 },
-                "deletedAt": {
-                    "$ref": "#/definitions/gorm.DeletedAt"
+                "deleted_at": {
+                    "type": "string"
+                },
+                "harga": {
+                    "type": "number"
                 },
                 "id": {
                     "type": "integer"
                 },
-                "price": {
-                    "description": "Decimal buat uang, lebih akurat",
-                    "type": "number"
-                },
-                "product_id": {
-                    "description": "Tambah type varchar(50) buat limit",
+                "nama_pembeli": {
                     "type": "string"
                 },
+                "product": {
+                    "$ref": "#/definitions/models.Product"
+                },
+                "product_id": {
+                    "type": "integer"
+                },
                 "quantity": {
-                    "description": "Tambah check constraint",
                     "type": "integer"
                 },
                 "total": {
-                    "description": "Computed",
                     "type": "number"
                 },
-                "updatedAt": {
+                "updated_at": {
                     "type": "string"
                 }
             }
