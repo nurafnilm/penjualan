@@ -31,6 +31,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
+	log.Println("Database connected successfully")
 
 	// Setup DB connection pool
 	sqlDB, err := db.DB()
@@ -62,6 +63,26 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+
+	// Tambahan: Log ML service URL dari env
+	mlURL := os.Getenv("ML_SERVICE_URL")
+	if mlURL == "" {
+		mlURL = "http://localhost:8000/predict"
+		log.Println("Using default ML service URL:", mlURL)
+	} else {
+		log.Println("ML service URL from env:", mlURL)
+	}
+
+	// Optional: Startup ping ke ML (uncomment kalau mau test koneksi awal)
+	/*
+	resp, err := http.Get(mlURL)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		log.Printf("Warning: ML service not reachable at startup: %v", err)
+	} else {
+		log.Println("ML service ping successful")
+	}
+	*/
+
 	log.Printf("Server starting on port %s", port)
 	if err := router.Run(":" + port); err != nil {
 		log.Fatal("Failed to start server:", err)

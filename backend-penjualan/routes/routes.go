@@ -58,6 +58,17 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 
 		// Forecast routes (baru!)
 		v1.POST("/forecast/upload", forecastCtrl.UploadHandler)
+		// Tambahan: Health check buat ML service (test koneksi)
+		v1.GET("/forecast/health", func(c *gin.Context) {
+			// Simple ping ke ML URL (dari controller config)
+			url := forecastCtrl.FastAPIURL
+			resp, err := http.Get(url + "/health") // Asumsi ML punya /health, atau ganti ke root
+			if err != nil || resp.StatusCode != http.StatusOK {
+				c.JSON(http.StatusServiceUnavailable, gin.H{"status": "ML service down", "details": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"status": "ML service healthy", "url": url})
+		})
 	}
 
 	return r

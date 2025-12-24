@@ -3,12 +3,10 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -19,15 +17,22 @@ import (
 // @Description Response for forecast upload (includes historical + predictions)
 type ForecastResponse struct {
 	Historical []map[string]interface{} `json:"historical"`
-    Forecast   []map[string]interface{} `json:"forecast"`
+	Forecast   []map[string]interface{} `json:"forecast"`
 }
 
 type UploadForecastController struct {
-	// Nggak butuh DB buat forecast, cuma exec Python
+	// Config buat FastAPI URL (dari env atau hardcode)
+	FastAPIURL string
 }
 
 func NewForecastController() *UploadForecastController {
-	return &UploadForecastController{}
+	fastAPIURL := os.Getenv("ML_SERVICE_URL")
+	if fastAPIURL == "" {
+		fastAPIURL = "http://localhost:8000/predict" // Default
+	}
+	return &UploadForecastController{
+		FastAPIURL: fastAPIURL,
+	}
 }
 
 // UploadHandler godoc
@@ -40,37 +45,13 @@ func NewForecastController() *UploadForecastController {
 // @Param periods formData int false "Number of days to forecast (default 30)"
 // @Success 200 {object} controllers.ForecastResponse
 // @Failure 400 {object} map[string]string "Invalid CSV or input"
-// @Failure 500 {object} map[string]string "Server error (e.g., Python exec failed)"
+// @Failure 500 {object} map[string]string "Server error (e.g., ML service failed)"
 // @Router /api/v1/forecast/upload [post]
 func (ctrl *UploadForecastController) UploadHandler(c *gin.Context) {
 	// Parse multipart
 	file, err := c.FormFile("csvFile")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No CSV file provided"})
-		return
-	}
-
-	// Save ke temp file
-	tempDir := os.TempDir()
-	tempFile := filepath.Join(tempDir, fmt.Sprintf("upload_%d.csv", time.Now().UnixNano()))
-	out, err := os.Create(tempFile)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create temp file"})
-		return
-	}
-	defer out.Close()
-	defer os.Remove(tempFile) // Cleanup
-
-	f, err := file.Open()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open file"})
-		return
-	}
-	defer f.Close()
-
-	_, err = io.Copy(out, f)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save CSV"})
 		return
 	}
 
@@ -81,45 +62,72 @@ func (ctrl *UploadForecastController) UploadHandler(c *gin.Context) {
 		periods = 30
 	}
 
-	// Input JSON buat Python
-	input := map[string]interface{}{
-		"csv_path": tempFile,
-		"periods":  periods,
-	}
-	inputJSON, _ := json.Marshal(input)
-
-	// Exec Python script
-	cmd := exec.Command("py", "-3.14", "./ml/predict.py")
-	cmd.Stdin = bytes.NewBuffer(inputJSON)
-
-	output, err := cmd.CombinedOutput()
+	// Buat multipart form buat FastAPI
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("csv_file", file.Filename) // FastAPI expect "csv_file"
 	if err != nil {
-		// LOG DETAIL KE CONSOLE (untuk kamu lihat di terminal)
-		fmt.Printf("=== PYTHON EXECUTION FAILED ===\n")
-		fmt.Printf("Error: %v\n", err)
-		fmt.Printf("Full output (stdout + stderr):\n%s\n", string(output))
-		fmt.Printf("================================\n")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create form"})
+		return
+	}
+	f, err := file.Open()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open file"})
+		return
+	}
+	defer f.Close()
+	io.Copy(part, f)
 
-		// KIRIM DETAIL ERROR KE CLIENT (Swagger/Postman akan tampilkan ini)
+	// Tambah periods
+	writer.WriteField("periods", strconv.Itoa(periods))
+	writer.Close()
+
+	// HTTP POST ke FastAPI
+	req, err := http.NewRequest("POST", ctrl.FastAPIURL, body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request"})
+		return
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "ML service unreachable",
+			"details": err.Error(),
+		})
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Prediction failed",
-			"details": string(output), // Ini yang paling penting: isi error dari Python
-			"cmd_err": fmt.Sprintf("%v", err),
+			"details": string(bodyBytes),
+			"status":  resp.StatusCode,
 		})
 		return
 	}
 
-	// Jika sukses
-	var resp ForecastResponse
-	err = json.Unmarshal(output, &resp)
+	// Parse response
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read response"})
+		return
+	}
+
+	var forecastResp ForecastResponse
+	err = json.Unmarshal(bodyBytes, &forecastResp)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Failed to parse prediction response",
-			"details": err.Error(),
-			"raw_output": string(output),
+			"error":     "Failed to parse prediction",
+			"details":   err.Error(),
+			"raw":       string(bodyBytes),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, forecastResp)
 }
